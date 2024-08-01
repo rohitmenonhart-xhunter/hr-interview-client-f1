@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HR Interview Simulator</title>
+    
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+    <h1>HR Interview Simulator</h1>
+    
+    <input type="file" id="resumeUpload" accept="application/pdf">
+    <button id="uploadButton">Upload Resume and Generate Questions</button>
+    
+    <div id="questions"></div>
+    <button id="startInterview">Start Interview</button>
+    
+    <div id="transcription">
+        <textarea id="transcriptionBox"></textarea>
+    </div>
+    <button id="submitResponse">Submit Response</button>
+    <button id="concludeInterview">Conclude Interview</button>
+    
+    <div id="feedback"></div>
+
+    <script>
+        const uploadButton = document.getElementById('uploadButton');
+        const startInterview = document.getElementById('startInterview');
+        const submitResponse = document.getElementById('submitResponse');
+        const concludeInterview = document.getElementById('concludeInterview');
+        let currentQuestionIndex = 0;
+        let followUpIndex = 0;
+        let interviewQuestions = ["Tell me about yourself"];
+        let interviewHistory = '';
+        let transcriptionText = '';
+        let recognition;
+        let recordingInProgress = false;
+        let currentQuestion;
+        let resumeText = '';
+        let isTTSPlaying = false;
+
+        // Initialize Speech Recognition
+        if ('webkitSpeechRecognition' in window) {
+            recognition = new webkitSpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = 'en-US';
+
+            recognition.onresult = (event) => {
+                let interimTranscript = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    interimTranscript += event.results[i][0].transcript;
+                }
+                transcriptionText = interimTranscript;
+                document.getElementById('transcriptionBox').value = transcriptionText;
+            };
+
+            recognition.onerror = (event) => {
+                console.error('Speech recognition error:', event.error);
+                if (event.error === 'no-speech') {
+                    alert('No speech detected. Please try again.');
+                }
+            };
+
+            recognition.onend = () => {
+                if (recordingInProgress) {
+                    recognition.start(); // Restart recognition if needed
+                }
+            };
+        } else {
+            alert('Speech recognition not supported in this browser.');
+        }
+
+        uploadButton.addEventListener('click', async () => {
+            const resumeFile = document.getElementById('resumeUpload').files[0];
+            if (!resumeFile) return alert('Please upload a resume');
+
+            const formData = new FormData();
+            formData.append('file', resumeFile);
+
+            try {
+                const response = await axios.post('http://localhost:5001/generate_questions', formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data'
+                    }
+                });
+
+                interviewQuestions = ["Tell me about yourself", ...response.data.questions];
+                resumeText = response.data.resume_text;
+                document.getElementById('questions').innerHTML = 'Questions generated based on your resume will be asked in turn.';
+                currentQuestionIndex = 0;
+                followUpIndex = 0;
+            } catch (error) {
+                console.error('Error uploading resume and generating questions:', error);
+                alert('Error generating questions.');
+            }
+        });
+
+        startInterview.addEventListener('click', async () => {
+            await askNextQuestion();
+        });
+
+        submitResponse.addEventListener('click', async () => {
+            transcriptionText = document.getElementById('transcriptionBox').value;
+            if (transcriptionText) {
+                try {
+                    stopRecording(); // Stop recording after response is submitted
+
+                    if (followUpIndex < 2) {
+                        // Get a follow-up question
+                        const response = await axios.post('http://localhost:5001/generate_follow_up', {
+                            question: currentQuestion,
+                            response: transcriptionText,
+                            resume_text: resumeText
+                        });
+
+                        const followUpQuestions = response.data.follow_up_questions;
+                        if (followUpQuestions.length > 0) {
+                            const followUpQuestion = followUpQuestions[1];
+                            document.getElementById('transcriptionBox').value = followUpQuestion;
+
+                            // Read follow-up question aloud using TTS
+                            isTTSPlaying = true;
+                            const audio = new Audio();
+                            audio.src = await getTTSUrl(followUpQuestion);
+                            audio.onended = () => {
+                                isTTSPlaying = false;
+                                startRecording(); // Start recording only after TTS finishes
+                            };
+                            audio.play();
+                        } else {
+                            followUpIndex = 0; // Reset for next main question
+                            transcriptionText = ''; // Clear transcription after sending
+                            document.getElementById('transcriptionBox').value = '';
+                            await askNextQuestion(); // Ask next main question
+                        }
+                    } else {
+                        followUpIndex = 0; // Reset for next main question
+                        transcriptionText = ''; // Clear transcription after sending
+                        document.getElementById('transcriptionBox').value = '';
+                        await askNextQuestion(); // Ask next main question
+                    }
+                } catch (error) {
+                    console.error('Error generating follow-up questions:', error);
+                    alert('Error generating follow-up questions.');
+                }
+            }
+        });
+
+        concludeInterview.addEventListener('click', async () => {
+            try {
+                stopRecording(); // Stop recording when concluding the interview
+                const response = await axios.post('http://localhost:5001/generate_feedback', {
+                    interview_history: interviewHistory
+                });
+
+                const feedback = response.data.feedback;
+                document.getElementById('feedback').innerText = feedback;
+            } catch (error) {
+                console.error('Error generating feedback:', error);
+                alert('Error generating feedback.');
+            }
+        });
+
+        async function askNextQuestion() {
+            if (currentQuestionIndex < interviewQuestions.length) {
+                currentQuestion = interviewQuestions[currentQuestionIndex];
+                document.getElementById('transcriptionBox').value = currentQuestion;
+
+                // Read question aloud using TTS
+                isTTSPlaying = true;
+                const audio = new Audio();
+                audio.src = await getTTSUrl(currentQuestion);
+                audio.onended = () => {
+                    isTTSPlaying = false;
+                    startRecording(); // Start recording only after TTS finishes
+                };
+                audio.play();
+
+                // Update interview history
+                interviewHistory += `\nQ: ${currentQuestion}\nA: `;
+
+                // Increment question index
+                currentQuestionIndex += 1;
+            } else {
+                document.getElementById('transcriptionBox').value = 'All questions have been asked.';
+            }
+        }
+
+        async function getTTSUrl(text) {
+            try {
+                const response = await axios.post('http://localhost:5001/tts', { text }, {
+                    responseType: 'blob'
+                });
+
+                const url = URL.createObjectURL(response.data);
+                return url;
+            } catch (error) {
+                console.error('Error generating TTS:', error);
+                return null;
+            }
+        }
+
+        function startRecording() {
+            if (recognition && !recordingInProgress && !isTTSPlaying) {
+                recognition.start();
+                recordingInProgress = true;
+            }
+        }
+
+        function stopRecording() {
+            if (recognition && recordingInProgress) {
+                recognition.stop();
+                recordingInProgress = false;
+            }
+        }
+    </script>
+</body>
+</html>

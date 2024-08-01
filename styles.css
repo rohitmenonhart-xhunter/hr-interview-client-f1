@@ -1,0 +1,80 @@
+/* main.css */
+
+/* Global Styles */
+body {
+    font-family: monospace;
+    margin: 0;
+    padding: 0;
+    background-color: #121212; /* Dark background */
+    color: #e0e0e0; /* Light text color for general text */
+}
+
+/* Headings */
+h1 {
+    color: #20c20e; /* Accent green color */
+    text-align: center;
+    margin: 20px 0;
+    font-family: monospace;
+
+}
+
+/* Buttons */
+button {
+    background-color: #20c20e; /* Green background */
+    border: none;
+    color: #7F00FF; /* White text */
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s ease;
+    font-family: monospace;
+
+}
+
+button:hover {
+    background-color: #1b9e17; /* Darker green on hover */
+}
+
+/* Input and File Upload */
+input[type="file"] {
+    border: 1px solid #333;
+    background-color: #1e1e1e;
+    color: #be99e4; /* Violet text */
+    padding: 10px;
+    border-radius: 5px;
+    font-size: 16px;
+    width: 100%;
+    margin-bottom: 20px;
+}
+
+/* Containers */
+#questions, #feedback, #transcription {
+    margin: 20px auto;
+    padding: 15px;
+    border: 1px solid #333;
+    background-color: #1e1e1e; /* Dark container background */
+    border-radius: 10px;
+    width: 90%;
+    max-width: 800px;
+}
+
+/* Textareas and transcription box */
+#transcriptionBox {
+    width: 100%;
+    min-height: 100px; /* Increased height for better visibility */
+    padding: 10px;
+    border: 1px solid #333;
+    border-radius: 5px;
+    background-color: #2c2c2c; /* Darker background for textarea */
+    color: #be99e4; /* Violet text */
+    font-size: 16px;
+    resize: vertical; /* Allow vertical resizing */
+}
+
+/* Inner Text Styling */
+p, span, div {
+    color: #be99e4; /* Violet text color */
+}
+
+/* Add any additional styles here */
