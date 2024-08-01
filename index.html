@@ -81,7 +81,7 @@
             formData.append('file', resumeFile);
 
             try {
-                const response = await axios.post('http://localhost:5001/generate_questions', formData, {
+                const response = await axios.post('https://hr-interview-server-f1.onrender.com/generate_questions', formData, {
                     headers: {
                         'Content-Type': 'multipart/form-data'
                     }
@@ -110,7 +110,7 @@
 
                     if (followUpIndex < 2) {
                         // Get a follow-up question
-                        const response = await axios.post('http://localhost:5001/generate_follow_up', {
+                        const response = await axios.post('https://hr-interview-server-f1.onrender.com/generate_follow_up', {
                             question: currentQuestion,
                             response: transcriptionText,
                             resume_text: resumeText
@@ -152,7 +152,7 @@
         concludeInterview.addEventListener('click', async () => {
             try {
                 stopRecording(); // Stop recording when concluding the interview
-                const response = await axios.post('http://localhost:5001/generate_feedback', {
+                const response = await axios.post('https://hr-interview-server-f1.onrender.com/generate_feedback', {
                     interview_history: interviewHistory
                 });
 
@@ -191,7 +191,7 @@
 
         async function getTTSUrl(text) {
             try {
-                const response = await axios.post('http://localhost:5001/tts', { text }, {
+                const response = await axios.post('https://hr-interview-server-f1.onrender.com/tts', { text }, {
                     responseType: 'blob'
                 });
 
