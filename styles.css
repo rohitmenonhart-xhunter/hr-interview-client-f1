@@ -5,13 +5,13 @@ body {
     font-family: monospace;
     margin: 0;
     padding: 0;
-    background-color: #121212; /* Dark background */
-    color: #e0e0e0; /* Light text color for general text */
+    background-color: #fefafa; /* Dark background */
+    color: #000000; /* Light text color for general text */
 }
 
 /* Headings */
 h1 {
-    color: #20c20e; /* Accent green color */
+    color: #421616; /* Accent green color */
     text-align: center;
     margin: 20px 0;
     font-family: monospace;
@@ -20,9 +20,9 @@ h1 {
 
 /* Buttons */
 button {
-    background-color: #20c20e; /* Green background */
+    background-color: #eaeaea; /* Green background */
     border: none;
-    color: #7F00FF; /* White text */
+    color: #1e1428; /* White text */
     padding: 10px 20px;
     border-radius: 5px;
     cursor: pointer;
@@ -33,14 +33,14 @@ button {
 }
 
 button:hover {
-    background-color: #1b9e17; /* Darker green on hover */
+    background-color: #5a5e5a; /* Darker green on hover */
 }
 
 /* Input and File Upload */
 input[type="file"] {
-    border: 1px solid #333;
-    background-color: #1e1e1e;
-    color: #be99e4; /* Violet text */
+    border: 1px solid #000000;
+    background-color: #f0f0f0;
+    color: #000000; /* Violet text */
     padding: 10px;
     border-radius: 5px;
     font-size: 16px;
@@ -52,8 +52,8 @@ input[type="file"] {
 #questions, #feedback, #transcription {
     margin: 20px auto;
     padding: 15px;
-    border: 1px solid #333;
-    background-color: #1e1e1e; /* Dark container background */
+    border: 1px solid #777070;
+    background-color: #ffffff; /* Dark container background */
     border-radius: 10px;
     width: 90%;
     max-width: 800px;
@@ -64,17 +64,17 @@ input[type="file"] {
     width: 100%;
     min-height: 100px; /* Increased height for better visibility */
     padding: 10px;
-    border: 1px solid #333;
+    border: 1px solid #fff8f8;
     border-radius: 5px;
-    background-color: #2c2c2c; /* Darker background for textarea */
-    color: #be99e4; /* Violet text */
+    background-color: #fffdfd; /* Darker background for textarea */
+    color: #ffffff; /* Violet text */
     font-size: 16px;
     resize: vertical; /* Allow vertical resizing */
 }
 
 /* Inner Text Styling */
 p, span, div {
-    color: #be99e4; /* Violet text color */
+    color: #000000; /* Violet text color */
 }
 
 /* Add any additional styles here */
