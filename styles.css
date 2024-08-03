@@ -67,7 +67,7 @@ input[type="file"] {
     border: 1px solid #fff8f8;
     border-radius: 5px;
     background-color: #fffdfd; /* Darker background for textarea */
-    color: #ffffff; /* Violet text */
+    color: #000000; /* Violet text */
     font-size: 16px;
     resize: vertical; /* Allow vertical resizing */
 }
