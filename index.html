@@ -32,7 +32,7 @@
     <button id="startInterview">Start Interview</button>
     
     <div id="transcription">
-        <textarea id="transcriptionBox"></textarea>
+        <textarea id="transcriptionBox" rows="10" cols="50"></textarea>
     </div>
     <button id="submitResponse">Submit Response</button>
     <button id="concludeInterview">Conclude Interview</button>
@@ -47,8 +47,7 @@
         const submitResponse = document.getElementById('submitResponse');
         const concludeInterview = document.getElementById('concludeInterview');
         let currentQuestionIndex = 0;
-        let followUpIndex = 0;
-        let interviewQuestions = ["Tell me about yourself"];
+        let interviewQuestions = [];
         let interviewHistory = '';
         let transcriptionText = '';
         let recognition;
@@ -56,6 +55,10 @@
         let currentQuestion;
         let resumeText = '';
         let isTTSPlaying = false;
+        let isFollowUp = false;
+        let followUpQuestionIndex = 0;
+        let interviewStarted = false;
+        let askingQuestion = false;
 
         // Initialize Speech Recognition
         if ('webkitSpeechRecognition' in window) {
@@ -67,16 +70,24 @@
             recognition.onresult = (event) => {
                 let interimTranscript = '';
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    interimTranscript += event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        transcriptionText += event.results[i][0].transcript + ' ';
+                    } else {
+                        interimTranscript += event.results[i][0].transcript;
+                    }
                 }
-                transcriptionText = interimTranscript;
-                document.getElementById('transcriptionBox').value = transcriptionText;
+                document.getElementById('transcriptionBox').value = transcriptionText + interimTranscript;
             };
 
             recognition.onerror = (event) => {
                 console.error('Speech recognition error:', event.error);
                 if (event.error === 'no-speech') {
-                    alert('No speech detected. Please try again.');
+                    console.log('No speech detected. Restarting recognition...');
+                    setTimeout(() => {
+                        if (!recordingInProgress) {
+                            startRecording(); // Attempt to restart recognition
+                        }
+                    }, 1000); // Delay before restarting
                 }
             };
 
@@ -97,17 +108,27 @@
             formData.append('file', resumeFile);
 
             try {
+                console.log('Uploading resume...');
+
                 const response = await axios.post('https://hr-interview-server-f1.onrender.com/generate_questions', formData, {
                     headers: {
                         'Content-Type': 'multipart/form-data'
                     }
                 });
 
-                interviewQuestions = ["Tell me about yourself", ...response.data.questions];
-                resumeText = response.data.resume_text;
-                document.getElementById('questions').innerHTML = 'Questions generated based on your resume will be asked in turn.';
-                currentQuestionIndex = 0;
-                followUpIndex = 0;
+                console.log('Server response:', response);
+
+                if (response.data && response.data.questions && response.data.resume_text) {
+                    interviewQuestions = ["Tell me about yourself", ...response.data.questions];
+                    resumeText = response.data.resume_text;
+                    document.getElementById('questions').innerHTML = 'Questions generated based on your resume will be asked in turn.';
+                    currentQuestionIndex = 0;
+                    isFollowUp = false;
+                    followUpQuestionIndex = 0;
+                    interviewStarted = false; // Reset interview started flag
+                } else {
+                    throw new Error('Invalid response format');
+                }
             } catch (error) {
                 console.error('Error uploading resume and generating questions:', error);
                 alert('Error generating questions.');
@@ -115,48 +136,53 @@
         });
 
         startInterview.addEventListener('click', async () => {
-            await askNextQuestion();
+            if (!interviewStarted) {
+                await askNextQuestion();
+                interviewStarted = true; // Set flag to indicate interview has started
+            }
         });
 
         submitResponse.addEventListener('click', async () => {
-            transcriptionText = document.getElementById('transcriptionBox').value;
-            if (transcriptionText) {
+            const finalTranscription = transcriptionText.trim();
+            if (finalTranscription) {
                 try {
-                    stopRecording(); // Stop recording after response is submitted
+                    stopRecording(); 
 
-                    if (followUpIndex < 2) {
-                        // Get a follow-up question
+                    interviewHistory += `Q: ${currentQuestion}\nA: ${finalTranscription}\n`;
+
+                    document.getElementById('transcriptionBox').value = '';
+                    transcriptionText = ''; 
+
+                    if (isFollowUp) {
+                        isFollowUp = false;
+                        followUpQuestionIndex++;
+                        await askNextQuestion();
+                    } else {
                         const response = await axios.post('https://hr-interview-server-f1.onrender.com/generate_follow_up', {
                             question: currentQuestion,
-                            response: transcriptionText,
+                            response: finalTranscription,
                             resume_text: resumeText
                         });
 
                         const followUpQuestions = response.data.follow_up_questions;
                         if (followUpQuestions.length > 0) {
-                            const followUpQuestion = followUpQuestions[1];
+                            const followUpQuestion = followUpQuestions[followUpQuestionIndex] || followUpQuestions[0];
                             document.getElementById('transcriptionBox').value = followUpQuestion;
 
-                            // Read follow-up question aloud using TTS
                             isTTSPlaying = true;
                             const audio = new Audio();
                             audio.src = await getTTSUrl(followUpQuestion);
                             audio.onended = () => {
                                 isTTSPlaying = false;
-                                startRecording(); // Start recording only after TTS finishes
+                                isFollowUp = true;
+                                startRecording();
                             };
                             audio.play();
+
+                            interviewHistory += `Q: ${followUpQuestion}\nA: `;
                         } else {
-                            followUpIndex = 0; // Reset for next main question
-                            transcriptionText = ''; // Clear transcription after sending
-                            document.getElementById('transcriptionBox').value = '';
-                            await askNextQuestion(); // Ask next main question
+                            await askNextQuestion();
                         }
-                    } else {
-                        followUpIndex = 0; // Reset for next main question
-                        transcriptionText = ''; // Clear transcription after sending
-                        document.getElementById('transcriptionBox').value = '';
-                        await askNextQuestion(); // Ask next main question
                     }
                 } catch (error) {
                     console.error('Error generating follow-up questions:', error);
@@ -167,7 +193,7 @@
 
         concludeInterview.addEventListener('click', async () => {
             try {
-                stopRecording(); // Stop recording when concluding the interview
+                stopRecording(); 
                 const response = await axios.post('https://hr-interview-server-f1.onrender.com/generate_feedback', {
                     interview_history: interviewHistory
                 });
@@ -182,32 +208,39 @@
 
         async function askNextQuestion() {
             if (currentQuestionIndex < interviewQuestions.length) {
-                currentQuestion = interviewQuestions[currentQuestionIndex];
-                document.getElementById('transcriptionBox').value = currentQuestion;
+                if (!askingQuestion) {
+                    askingQuestion = true;
+                    currentQuestion = interviewQuestions[currentQuestionIndex];
+                    document.getElementById('transcriptionBox').value = currentQuestion;
 
-                // Read question aloud using TTS
-                isTTSPlaying = true;
-                const audio = new Audio();
-                audio.src = await getTTSUrl(currentQuestion);
-                audio.onended = () => {
-                    isTTSPlaying = false;
-                    startRecording(); // Start recording only after TTS finishes
-                };
-                audio.play();
+                    isTTSPlaying = true;
+                    const audio = new Audio();
+                    audio.src = await getTTSUrl(currentQuestion);
+                    audio.onended = () => {
+                        isTTSPlaying = false;
+                        startRecording();
+                    };
+                    audio.play();
 
-                // Update interview history
-                interviewHistory += `\nQ: ${currentQuestion}\nA: `;
+                    interviewHistory += `Q: ${currentQuestion}\nA: `;
 
-                // Increment question index
-                currentQuestionIndex += 1;
+                    currentQuestionIndex += 1;
+                    isFollowUp = false;
+                    followUpQuestionIndex = 0;
+                    askingQuestion = false;
+                }
             } else {
-                document.getElementById('transcriptionBox').value = 'All questions have been asked.';
+                document.getElementById('transcriptionBox').value = 'Interview completed.';
+                setTimeout(() => {
+                    concludeInterview.click(); 
+                }, 2000); 
             }
         }
 
         async function getTTSUrl(text) {
             try {
-                const response = await axios.post('https://hr-interview-server-f1.onrender.com/tts', { text }, {
+                const cleanedText = text.replace(/<\/s>/g, ''); // Remove the </s> tag
+                const response = await axios.post('https://hr-interview-server-f1.onrender.com/tts', { text: cleanedText }, {
                     responseType: 'blob'
                 });
 
