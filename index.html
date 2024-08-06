@@ -14,7 +14,7 @@
         #logo {
             display: block;
             margin: 0 auto;
-            width: 400px; /* Adjust the width as needed */
+            width: 400px;
             height: auto;
             border-radius: 150px;
         }
@@ -52,7 +52,7 @@
         let transcriptionText = '';
         let recognition;
         let recordingInProgress = false;
-        let currentQuestion;
+        let currentQuestion = '';
         let resumeText = '';
         let isTTSPlaying = false;
         let isFollowUp = false;
@@ -121,7 +121,7 @@
                     interviewQuestions = ["Tell me about yourself", ...response.data.questions];
                     resumeText = response.data.resume_text;
                     document.getElementById('questions').innerHTML = 'Questions generated based on your resume will be asked in turn.';
-                    currentQuestionIndex = 1; // Start with the first resume-based question
+                    currentQuestionIndex = 0;
                     isFollowUp = false;
                     followUpQuestionIndex = 0;
                     interviewStarted = false; // Reset interview started flag
@@ -136,8 +136,7 @@
 
         startInterview.addEventListener('click', async () => {
             if (!interviewStarted) {
-                // Ask "Tell me about yourself" first
-                await askTellMeAboutYourself();
+                await askNextQuestion();
                 interviewStarted = true; // Set flag to indicate interview has started
             }
         });
@@ -206,22 +205,6 @@
             }
         });
 
-        async function askTellMeAboutYourself() {
-            currentQuestion = "Tell me about yourself";
-            document.getElementById('transcriptionBox').value = currentQuestion;
-
-            isTTSPlaying = true;
-            const audio = new Audio();
-            audio.src = await getTTSUrl(currentQuestion);
-            audio.onended = () => {
-                isTTSPlaying = false;
-                startRecording();
-            };
-            audio.play();
-
-            interviewHistory += `Q: ${currentQuestion}\nA: `;
-        }
-
         async function askNextQuestion() {
             if (currentQuestionIndex < interviewQuestions.length) {
                 currentQuestion = interviewQuestions[currentQuestionIndex];
@@ -238,7 +221,7 @@
 
                 interviewHistory += `Q: ${currentQuestion}\nA: `;
 
-                currentQuestionIndex++; // Move to the next question
+                currentQuestionIndex++; // Move this line inside the if statement
                 isFollowUp = false;
                 followUpQuestionIndex = 0;
             } else {
@@ -277,6 +260,7 @@
                 recordingInProgress = false;
             }
         }
+
     </script>
 </body>
 </html>
