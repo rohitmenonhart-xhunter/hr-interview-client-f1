@@ -58,7 +58,6 @@
         let isFollowUp = false;
         let followUpQuestionIndex = 0;
         let interviewStarted = false;
-        let askingQuestion = false;
 
         // Initialize Speech Recognition
         if ('webkitSpeechRecognition' in window) {
@@ -108,7 +107,7 @@
             formData.append('file', resumeFile);
 
             try {
-                console.log('Uploading resume...');
+                alert('Uploading resume...');
 
                 const response = await axios.post('https://hr-interview-server-f1.onrender.com/generate_questions', formData, {
                     headers: {
@@ -122,7 +121,7 @@
                     interviewQuestions = ["Tell me about yourself", ...response.data.questions];
                     resumeText = response.data.resume_text;
                     document.getElementById('questions').innerHTML = 'Questions generated based on your resume will be asked in turn.';
-                    currentQuestionIndex = 0;
+                    currentQuestionIndex = 1; // Start with the first resume-based question
                     isFollowUp = false;
                     followUpQuestionIndex = 0;
                     interviewStarted = false; // Reset interview started flag
@@ -137,7 +136,8 @@
 
         startInterview.addEventListener('click', async () => {
             if (!interviewStarted) {
-                await askNextQuestion();
+                // Ask "Tell me about yourself" first
+                await askTellMeAboutYourself();
                 interviewStarted = true; // Set flag to indicate interview has started
             }
         });
@@ -206,29 +206,41 @@
             }
         });
 
+        async function askTellMeAboutYourself() {
+            currentQuestion = "Tell me about yourself";
+            document.getElementById('transcriptionBox').value = currentQuestion;
+
+            isTTSPlaying = true;
+            const audio = new Audio();
+            audio.src = await getTTSUrl(currentQuestion);
+            audio.onended = () => {
+                isTTSPlaying = false;
+                startRecording();
+            };
+            audio.play();
+
+            interviewHistory += `Q: ${currentQuestion}\nA: `;
+        }
+
         async function askNextQuestion() {
             if (currentQuestionIndex < interviewQuestions.length) {
-                if (!askingQuestion) {
-                    askingQuestion = true;
-                    currentQuestion = interviewQuestions[currentQuestionIndex];
-                    document.getElementById('transcriptionBox').value = currentQuestion;
+                currentQuestion = interviewQuestions[currentQuestionIndex];
+                document.getElementById('transcriptionBox').value = currentQuestion;
 
-                    isTTSPlaying = true;
-                    const audio = new Audio();
-                    audio.src = await getTTSUrl(currentQuestion);
-                    audio.onended = () => {
-                        isTTSPlaying = false;
-                        startRecording();
-                    };
-                    audio.play();
+                isTTSPlaying = true;
+                const audio = new Audio();
+                audio.src = await getTTSUrl(currentQuestion);
+                audio.onended = () => {
+                    isTTSPlaying = false;
+                    startRecording();
+                };
+                audio.play();
 
-                    interviewHistory += `Q: ${currentQuestion}\nA: `;
+                interviewHistory += `Q: ${currentQuestion}\nA: `;
 
-                    currentQuestionIndex += 1;
-                    isFollowUp = false;
-                    followUpQuestionIndex = 0;
-                    askingQuestion = false;
-                }
+                currentQuestionIndex++; // Move to the next question
+                isFollowUp = false;
+                followUpQuestionIndex = 0;
             } else {
                 document.getElementById('transcriptionBox').value = 'Interview completed.';
                 setTimeout(() => {
